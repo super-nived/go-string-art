@@ -7,4 +7,4 @@ It is a Dockerized version of the [realtime chat](https://github.com/gin-gonic/g
 
 ## Deployment
 
-See the guide at https://render.com/docs/go-web-server.
+See the guide at https://render.com/docs/deploy-go-web-server.
