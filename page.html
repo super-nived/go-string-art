@@ -1,41 +1,950 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <title>Hello from Render!</title>
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
-    <script>
-      setTimeout(() => {
-        confetti({
-          particleCount: 100,
-          spread: 70,
-          origin: { y: 0.5 },
-          disableForReducedMotion: true
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>String Art Canvas Drawer</title>
+  <style>
+    /* Cropping Modal Styles */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, rgba(0, 0, 0, 0.9), rgba(50, 50, 100, 0.9));
+      backdrop-filter: blur(10px);
+    }
+    
+    .modal-content {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: linear-gradient(145deg, #ffffff, #f0f2f8);
+      padding: 30px;
+      border-radius: 20px;
+      text-align: center;
+      max-width: 90%;
+      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    #cropper {
+      max-width: 80vw;
+      max-height: 50vh;
+      margin-bottom: 15px;
+      cursor: move;
+      border-radius: 15px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    }
+    
+    .crop-preview {
+      width: 150px;
+      height: 150px;
+      margin: 10px auto;
+      border: 3px solid;
+      border-image: linear-gradient(45deg, #667eea, #764ba2) 1;
+      overflow: hidden;
+      border-radius: 15px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    }
+    
+    .crop-controls {
+      margin-top: 25px;
+    }
+    
+    .crop-btn {
+      padding: 12px 24px;
+      margin: 0 8px;
+      cursor: pointer;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      border: none;
+      border-radius: 25px;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+    
+    .crop-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
+    }
+    
+    .instructions {
+      margin: 15px 0;
+      color: #5a67d8;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    
+    /* Main Styles */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #f5576c 75%, #4facfe 100%);
+      background-size: 400% 400%;
+      animation: gradientShift 15s ease infinite;
+      min-height: 100vh;
+      margin: 0;
+      padding: 0px;
+      color: #2d3748;
+    }
+    
+    @keyframes gradientShift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+      border-radius: 0px;
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.2);
+      padding: 30px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+    
+    @media (max-width: 900px) {
+      .container {
+        grid-template-columns: 1fr;
+        padding: 20px;
+      }
+    }
+    
+    h1 {
+      grid-column: 1 / -1;
+      text-align: center;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      font-size: 2.5rem;
+      font-weight: 800;
+      margin-bottom: 20px;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    .controls {
+      background: linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(248, 250, 252, 0.9));
+      backdrop-filter: blur(15px);
+      padding: 25px;
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+    }
+    
+    .controls h3 {
+      color: #4a5568;
+      margin-bottom: 20px;
+      font-size: 1.2rem;
+      font-weight: 700;
+    }
+    
+    .settings {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+      margin: 25px 0;
+    }
+    
+    .setting {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 15px;
+    }
+    
+    .setting label {
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #4a5568;
+      font-size: 0.9rem;
+    }
+    
+    .setting input {
+      padding: 12px;
+      border: 2px solid transparent;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.8);
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    .setting input:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+      transform: translateY(-1px);
+    }
+    
+    .control-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin: 25px 0;
+    }
+    
+    button {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      border: none;
+      padding: 12px 18px;
+      border-radius: 15px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    }
+    
+    button:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 25px rgba(102, 126, 234, 0.5);
+    }
+    
+    button:active {
+      transform: translateY(-1px);
+    }
+    
+    button:disabled {
+      background: linear-gradient(135deg, #a0aec0, #cbd5e0);
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+    
+    button#clearBtn {
+      background: linear-gradient(135deg, #f56565, #e53e3e);
+      box-shadow: 0 4px 15px rgba(245, 101, 101, 0.3);
+    }
+    
+    button#clearBtn:hover {
+      box-shadow: 0 8px 25px rgba(245, 101, 101, 0.5);
+    }
+    
+    button#downloadBtn {
+      background: linear-gradient(135deg, #48bb78, #38a169);
+      box-shadow: 0 4px 15px rgba(72, 187, 120, 0.3);
+    }
+    
+    button#downloadBtn:hover {
+      box-shadow: 0 8px 25px rgba(72, 187, 120, 0.5);
+    }
+    
+    canvas {
+      border: 3px solid transparent;
+      border-image: linear-gradient(45deg, #667eea, #764ba2, #f093fb) 1;
+      border-radius: 20px;
+      background: white;
+      max-width: 100%;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+      transition: all 0.3s ease;
+    }
+    
+    canvas:hover {
+      transform: scale(1.02);
+      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.2);
+    }
+    
+    .canvas-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    
+    .info {
+      grid-column: 1 / -1;
+      background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+      padding: 25px;
+      border-radius: 20px;
+      margin-top: 25px;
+      font-size: 14px;
+      border: 1px solid rgba(102, 126, 234, 0.2);
+      backdrop-filter: blur(10px);
+    }
+    
+    .info p {
+      margin-bottom: 15px;
+      color: #4a5568;
+      font-weight: 600;
+    }
+    
+    .info ol {
+      padding-left: 20px;
+      color: #5a67d8;
+    }
+    
+    .info li {
+      margin-bottom: 8px;
+      line-height: 1.6;
+    }
+    
+    .line-info {
+      padding: 15px;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(237, 242, 247, 0.9));
+      border-radius: 15px;
+      font-family: 'Fira Code', monospace;
+      text-align: center;
+      color: #4a5568;
+      font-weight: 600;
+      border: 2px solid rgba(102, 126, 234, 0.1);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    }
+    
+    .progress {
+      height: 8px;
+      background: rgba(224, 224, 224, 0.3);
+      border-radius: 10px;
+      margin: 20px 0;
+      overflow: hidden;
+      backdrop-filter: blur(10px);
+    }
+    
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #667eea, #764ba2);
+      width: 0%;
+      transition: width 0.5s ease;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(102, 126, 234, 0.5);
+    }
+    
+    input[type="range"] {
+      width: 100%;
+      height: 6px;
+      background: linear-gradient(90deg, #e2e8f0, #667eea);
+      border-radius: 5px;
+      outline: none;
+      -webkit-appearance: none;
+    }
+    
+    input[type="range"]::-webkit-slider-thumb {
+      appearance: none;
+      width: 20px;
+      height: 20px;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      border-radius: 50%;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+      transition: all 0.3s ease;
+    }
+    
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.6);
+    }
+    
+    input[type="color"] {
+      width: 100%;
+      height: 45px;
+      border: 2px solid transparent;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    input[type="color"]:hover {
+      transform: scale(1.05);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    }
+    
+    input[type="file"] {
+      padding: 12px;
+      border: 2px dashed #667eea;
+      border-radius: 12px;
+      background: rgba(102, 126, 234, 0.05);
+      margin-bottom: 15px;
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+    
+    input[type="file"]:hover {
+      border-color: #764ba2;
+      background: rgba(118, 75, 162, 0.1);
+    }
+    
+    #sequenceInfo {
+      color: #48bb78;
+      font-weight: 700;
+      margin-top: 10px;
+    }
+    
+    /* Slider value display styling */
+    .setting span {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      font-weight: 700;
+      margin-top: 5px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Cropping Modal -->
+  <div id="cropModal" class="modal">
+    <div class="modal-content">
+      <h3>Crop Image to 300px × 300px</h3>
+      <p class="instructions">Drag image to position | Crop area is fixed at 300×300</p>
+      <div>
+        <img id="cropper" src="#" alt="Image to crop">
+      </div>
+      <div class="crop-preview">
+        <canvas id="previewCanvas" width="300" height="300"></canvas>
+      </div>
+      <p class="instructions">Preview</p>
+      <div class="crop-controls">
+        <button id="cancelCrop" class="crop-btn">Cancel</button>
+        <button id="applyCrop" class="crop-btn">Apply Crop</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+    <h1>🎨 String Art Canvas Drawer</h1>
+
+    <div class="controls">
+      <h3>Upload Image to Generate Line Sequence</h3>
+      <input type="file" id="imageInput" accept="image/*" />
+      <button id="uploadBtn">📤 Upload & Generate Sequence</button>
+
+      <div class="settings">
+        <div class="setting">
+          <label for="canvasSize">Canvas Size:</label>
+          <input type="number" id="canvasSize" value="500" min="300" max="1000" step="50">
+        </div>
+        <div class="setting">
+          <label for="pins">Number of Pins:</label>
+          <input type="number" id="pins" value="300" min="50" max="500" step="10">
+        </div>
+        <div class="setting">
+          <label for="lineColor">Line Color:</label>
+          <input type="color" id="lineColor" value="#000000">
+        </div>
+        <div class="setting">
+          <label for="lineWidth">Line Width:</label>
+          <input type="range" id="lineWidth" min="0.1" max="3" value="0.5" step="0.1">
+          <span id="lineWidthValue">0.5</span>
+        </div>
+        <div class="setting">
+          <label for="lineOpacity">Line Opacity:</label>
+          <input type="range" id="lineOpacity" min="0.1" max="1" value="0.3" step="0.05">
+          <span id="lineOpacityValue">0.3</span>
+        </div>
+        <div class="setting">
+          <label for="animationSpeed">Animation Speed:</label>
+          <input type="range" id="animationSpeed" min="1" max="100" value="10" step="1">
+          <span id="animationSpeedValue">10</span>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <button id="drawBtn" disabled>🎨 Draw String Art</button>
+        <button id="animateBtn" disabled>▶️ Animate Drawing</button>
+        <button id="nextBtn" disabled>⏭️ Next Line</button>
+        <button id="prevBtn" disabled>⏮️ Previous Line</button>
+        <button id="clearBtn">🗑️ Clear Canvas</button>
+        <button id="downloadBtn" disabled>💾 Download Image</button>
+      </div>
+
+      <div class="progress" id="progressContainer" style="display: none;">
+        <div class="progress-bar" id="progressBar"></div>
+      </div>
+      <div class="line-info" id="lineInfo">No image uploaded</div>
+    </div>
+
+    <div class="canvas-container">
+      <canvas id="stringArtCanvas" width="500" height="500"></canvas>
+    </div>
+
+    <div class="info" id="info">
+      <p>📋 <strong>Instructions:</strong></p>
+      <ol>
+        <li>Upload an image (PNG/JPEG). It will be automatically cropped to 300×300 pixels</li>
+        <li>The app sends the cropped image to the backend API to generate the sequence</li>
+        <li>Adjust settings as needed</li>
+        <li>Draw, animate, or step through the lines as you like</li>
+      </ol>
+      <p id="sequenceInfo"></p>
+    </div>
+  </div>
+
+  <script>
+    let canvas, ctx;
+    let lineSequence = [];
+    let pinCoords = [];
+    let currentLineIndex = -1;
+    let currentPin = 0;
+    let animationId = null;
+    let isAnimating = false;
+    let drawnLines = []; // Store all drawn lines for proper previous functionality
+    
+    // Cropping variables
+    let cropperImage = null;
+    let cropX = 0;
+    let cropY = 0;
+    let cropSize = 300;
+    let isDragging = false;
+    let dragStartX = 0;
+    let dragStartY = 0;
+
+    document.addEventListener('DOMContentLoaded', function() {
+      canvas = document.getElementById('stringArtCanvas');
+      ctx = canvas.getContext('2d');
+      
+      // Set up event listeners for cropper
+      document.getElementById('cropper').addEventListener('mousedown', startDrag);
+      document.addEventListener('mousemove', drag);
+      document.addEventListener('mouseup', endDrag);
+      document.getElementById('cancelCrop').addEventListener('click', cancelCrop);
+      document.getElementById('applyCrop').addEventListener('click', applyCrop);
+
+      setupEventListeners();
+      updateCanvasSize();
+    });
+
+    function setupEventListeners() {
+      document.getElementById('uploadBtn').addEventListener('click', handleImageUpload);
+      document.getElementById('drawBtn').addEventListener('click', drawStringArt);
+      document.getElementById('animateBtn').addEventListener('click', animateStringArt);
+      document.getElementById('nextBtn').addEventListener('click', drawNextLine);
+      document.getElementById('prevBtn').addEventListener('click', drawPreviousLine);
+      document.getElementById('clearBtn').addEventListener('click', clearCanvas);
+      document.getElementById('downloadBtn').addEventListener('click', downloadImage);
+      document.getElementById('canvasSize').addEventListener('change', updateCanvasSize);
+      document.getElementById('pins').addEventListener('change', calculatePinCoords);
+      
+      // Update slider value displays
+      ['lineWidth', 'lineOpacity', 'animationSpeed'].forEach(id => {
+        document.getElementById(id).addEventListener('input', updateSliderValue);
+      });
+    }
+
+    function updateSliderValue(event) {
+      const valueSpan = document.getElementById(event.target.id + 'Value');
+      if (valueSpan) {
+        valueSpan.textContent = event.target.value;
+      }
+    }
+
+    function updateCanvasSize() {
+      const size = parseInt(document.getElementById('canvasSize').value);
+      canvas.width = size;
+      canvas.height = size;
+      calculatePinCoords();
+      clearCanvas();
+    }
+
+    function calculatePinCoords() {
+      const pins = parseInt(document.getElementById('pins').value);
+      const size = parseInt(document.getElementById('canvasSize').value);
+
+      pinCoords = [];
+      const center = size / 2;
+      const radius = size / 2 - 1;
+
+      for (let i = 0; i < pins; i++) {
+        const angle = 2 * Math.PI * i / pins;
+        const x = Math.floor(center + radius * Math.cos(angle));
+        const y = Math.floor(center + radius * Math.sin(angle));
+        pinCoords.push({ x, y });
+      }
+      currentLineIndex = -1;
+      currentPin = 0;
+      drawnLines = [];
+      updateLineInfo();
+    }
+
+    async function handleImageUpload() {
+      const fileInput = document.getElementById('imageInput');
+      const file = fileInput.files[0];
+      if (!file) {
+        alert('Please select an image file.');
+        return;
+      }
+
+      // Show progress
+      document.getElementById('progressContainer').style.display = 'block';
+      document.getElementById('progressBar').style.width = '30%';
+
+      // Check if image needs cropping
+      const img = new Image();
+      img.onload = function() {
+        document.getElementById('progressBar').style.width = '60%';
+        
+        if (img.width === 300 && img.height === 300) {
+          // Already correct size, proceed with upload
+          uploadImage(file);
+        } else {
+          // Show cropping interface
+          showCropper(img);
+        }
+      };
+      img.src = URL.createObjectURL(file);
+    }
+
+    function showCropper(img) {
+      cropperImage = img;
+      const modal = document.getElementById('cropModal');
+      const cropperImg = document.getElementById('cropper');
+      
+      // Calculate display size to fit in modal
+      const maxSize = Math.min(window.innerWidth * 0.8, 600);
+      let displayWidth = img.width;
+      let displayHeight = img.height;
+      
+      if (img.width > maxSize || img.height > maxSize) {
+        const ratio = Math.min(maxSize / img.width, maxSize / img.height);
+        displayWidth = img.width * ratio;
+        displayHeight = img.height * ratio;
+      }
+      
+      cropperImg.width = displayWidth;
+      cropperImg.height = displayHeight;
+      cropperImg.src = img.src;
+      
+      // Initialize crop position to center
+      cropX = (img.width - cropSize) / 2;
+      cropY = (img.height - cropSize) / 2;
+      
+      // Show modal
+      modal.style.display = 'block';
+      updateCropPreview();
+      document.getElementById('progressBar').style.width = '100%';
+    }
+
+    function startDrag(e) {
+      isDragging = true;
+      dragStartX = e.clientX;
+      dragStartY = e.clientY;
+      e.preventDefault();
+    }
+
+    function drag(e) {
+      if (!isDragging) return;
+      
+      const dx = e.clientX - dragStartX;
+      const dy = e.clientY - dragStartY;
+      
+      // Calculate scale factor between displayed image and original
+      const scaleX = cropperImage.width / document.getElementById('cropper').width;
+      const scaleY = cropperImage.height / document.getElementById('cropper').height;
+      
+      // Update crop position
+      cropX = Math.max(0, Math.min(cropperImage.width - cropSize, cropX - dx * scaleX));
+      cropY = Math.max(0, Math.min(cropperImage.height - cropSize, cropY - dy * scaleY));
+      
+      dragStartX = e.clientX;
+      dragStartY = e.clientY;
+      
+      updateCropPreview();
+    }
+
+    function endDrag() {
+      isDragging = false;
+    }
+
+    function updateCropPreview() {
+      const previewCanvas = document.getElementById('previewCanvas');
+      const ctx = previewCanvas.getContext('2d');
+      
+      ctx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+      
+      // Draw the cropped portion
+      ctx.drawImage(
+        cropperImage,
+        cropX, cropY, cropSize, cropSize,
+        0, 0, previewCanvas.width, previewCanvas.height
+      );
+    }
+
+    function cancelCrop() {
+      document.getElementById('cropModal').style.display = 'none';
+      document.getElementById('imageInput').value = '';
+      document.getElementById('progressContainer').style.display = 'none';
+    }
+
+    function applyCrop() {
+      document.getElementById('cropModal').style.display = 'none';
+      
+      // Create a canvas to hold the cropped image
+      const canvas = document.createElement('canvas');
+      canvas.width = cropSize;
+      canvas.height = cropSize;
+      const ctx = canvas.getContext('2d');
+      
+      // Draw the cropped portion
+      ctx.drawImage(
+        cropperImage,
+        cropX, cropY, cropSize, cropSize,
+        0, 0, cropSize, cropSize
+      );
+      
+      // Convert to blob and upload
+      canvas.toBlob(function(blob) {
+        const file = new File([blob], 'cropped_image.png', { type: 'image/png' });
+        uploadImage(file);
+      }, 'image/png');
+    }
+
+    async function uploadImage(file) {
+      const formData = new FormData();
+      formData.append('image', file);
+
+      try {
+        const response = await fetch('/api/string-art', {
+          method: 'POST',
+          body: formData
         });
-      }, 500);
-    </script>
-    <style>
-      html {
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-        font-weight: 700;
-        font-size: calc(62rem / 16);
+
+        if (!response.ok) {
+          throw new Error(`API Error: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+
+        if (!data.sequence || !Array.isArray(data.sequence)) {
+          throw new Error('Invalid API response: sequence missing');
+        }
+
+        lineSequence = data.sequence;
+
+        document.getElementById('sequenceInfo').innerHTML =
+          `✅ Loaded ${lineSequence.length} lines from API`;
+          
+        document.getElementById('progressBar').style.width = '100%';
+
+        // Enable drawing controls
+        document.getElementById('drawBtn').disabled = false;
+        document.getElementById('animateBtn').disabled = false;
+        document.getElementById('nextBtn').disabled = false;
+        document.getElementById('prevBtn').disabled = false;
+        document.getElementById('downloadBtn').disabled = false;
+
+        currentLineIndex = -1;
+        currentPin = 0;
+        drawnLines = [];
+        updateLineInfo();
+        clearCanvas();
+        
+        // Hide progress after a delay
+        setTimeout(() => {
+          document.getElementById('progressContainer').style.display = 'none';
+        }, 1000);
+      } catch (error) {
+        alert('Failed to generate sequence: ' + error.message);
+        document.getElementById('progressContainer').style.display = 'none';
       }
-      body {
-        background: white;
+    }
+
+    function clearCanvas() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Draw pins
+      ctx.fillStyle = '#ff0000';
+      pinCoords.forEach(pin => {
+        ctx.beginPath();
+        ctx.arc(pin.x, pin.y, 2, 0, 2 * Math.PI);
+        ctx.fill();
+      });
+
+      // Stop any running animation
+      if (animationId) {
+        cancelAnimationFrame(animationId);
+        isAnimating = false;
+        document.getElementById('animateBtn').textContent = '▶️ Animate Drawing';
       }
-      section {
-        border-radius: 1em;
-        padding: 1em;
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        margin-right: -50%;
-        transform: translate(-50%, -50%);
+
+      currentLineIndex = -1;
+      currentPin = 0;
+      drawnLines = [];
+      updateLineInfo();
+    }
+
+    function updateLineInfo() {
+      const lineInfo = document.getElementById('lineInfo');
+      if (currentLineIndex >= 0 && currentLineIndex < lineSequence.length) {
+        lineInfo.textContent = `Line ${currentLineIndex + 1}/${lineSequence.length}: Pin ${currentPin} → ${lineSequence[currentLineIndex]}`;
+      } else {
+        lineInfo.textContent = 'No line drawn';
       }
-    </style>
-  </head>
-  <body>
-    <section>
-      Hello from Render!
-    </section>
-  </body>
+
+      // Update button states
+      document.getElementById('prevBtn').disabled = currentLineIndex <= -1;
+      document.getElementById('nextBtn').disabled = currentLineIndex >= lineSequence.length - 1;
+    }
+
+    function drawLine(pin1, pin2) {
+      ctx.beginPath();
+      ctx.moveTo(pin1.x, pin1.y);
+      ctx.lineTo(pin2.x, pin2.y);
+      ctx.stroke();
+    }
+
+    function setLineStyle() {
+      const lineColor = document.getElementById('lineColor').value;
+      const lineWidth = parseFloat(document.getElementById('lineWidth').value);
+      const lineOpacity = parseFloat(document.getElementById('lineOpacity').value);
+
+      // Convert hex to RGB
+      const r = parseInt(lineColor.substr(1, 2), 16);
+      const g = parseInt(lineColor.substr(3, 2), 16);
+      const b = parseInt(lineColor.substr(5, 2), 16);
+
+      ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${lineOpacity})`;
+      ctx.lineWidth = lineWidth;
+      ctx.lineCap = 'round';
+    }
+
+    function drawStringArt() {
+      clearCanvas();
+      setLineStyle();
+      currentPin = 0;
+      drawnLines = [];
+      
+      // Draw all lines in sequence
+      lineSequence.forEach((pinIndex, index) => {
+        const lineData = {
+          from: currentPin,
+          to: pinIndex,
+          fromCoord: pinCoords[currentPin],
+          toCoord: pinCoords[pinIndex]
+        };
+        drawnLines.push(lineData);
+        drawLine(pinCoords[currentPin], pinCoords[pinIndex]);
+        currentPin = pinIndex;
+      });
+      
+      currentLineIndex = lineSequence.length - 1;
+      updateLineInfo();
+    }
+
+    function animateStringArt() {
+      if (isAnimating) {
+        // Stop animation
+        cancelAnimationFrame(animationId);
+        isAnimating = false;
+        document.getElementById('animateBtn').textContent = '▶️ Animate Drawing';
+        return;
+      }
+
+      // Start animation
+      clearCanvas();
+      setLineStyle();
+      currentPin = 0;
+      currentLineIndex = -1;
+      drawnLines = [];
+      isAnimating = true;
+      document.getElementById('animateBtn').textContent = '⏸️ Pause';
+
+      function animateStep() {
+        if (currentLineIndex >= lineSequence.length - 1) {
+          // Animation complete
+          isAnimating = false;
+          document.getElementById('animateBtn').textContent = '▶️ Animate Drawing';
+          return;
+        }
+
+        currentLineIndex++;
+        const nextPin = lineSequence[currentLineIndex];
+        const lineData = {
+          from: currentPin,
+          to: nextPin,
+          fromCoord: pinCoords[currentPin],
+          toCoord: pinCoords[nextPin]
+        };
+        drawnLines.push(lineData);
+        drawLine(pinCoords[currentPin], pinCoords[nextPin]);
+        currentPin = nextPin;
+        updateLineInfo();
+
+        // Control animation speed
+        const speed = parseInt(document.getElementById('animationSpeed').value);
+        animationId = setTimeout(() => {
+          requestAnimationFrame(animateStep);
+        }, 1000 / speed);
+      }
+
+      animateStep();
+    }
+
+    function drawNextLine() {
+      if (currentLineIndex >= lineSequence.length - 1) return;
+
+      setLineStyle();
+      currentLineIndex++;
+      const nextPin = lineSequence[currentLineIndex];
+      const lineData = {
+        from: currentPin,
+        to: nextPin,
+        fromCoord: pinCoords[currentPin],
+        toCoord: pinCoords[nextPin]
+      };
+      drawnLines.push(lineData);
+      drawLine(pinCoords[currentPin], pinCoords[nextPin]);
+      currentPin = nextPin;
+      updateLineInfo();
+    }
+
+    function drawPreviousLine() {
+      if (currentLineIndex <= -1) return;
+
+      // Remove the last drawn line from our tracking
+      drawnLines.pop();
+      currentLineIndex--;
+      
+      // Redraw canvas with pins
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      // Draw pins
+      ctx.fillStyle = '#ff0000';
+      pinCoords.forEach(pin => {
+        ctx.beginPath();
+        ctx.arc(pin.x, pin.y, 2, 0, 2 * Math.PI);
+        ctx.fill();
+      });
+      
+      // Redraw all lines up to current index
+      setLineStyle();
+      drawnLines.forEach(lineData => {
+        drawLine(lineData.fromCoord, lineData.toCoord);
+      });
+      
+      // Update current pin position
+      if (drawnLines.length > 0) {
+        currentPin = drawnLines[drawnLines.length - 1].to;
+      } else {
+        currentPin = 0;
+      }
+      
+      updateLineInfo();
+    }
+
+    function downloadImage() {
+      const link = document.createElement('a');
+      link.download = 'string_art.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }
+  </script>
+</body>
 </html>
