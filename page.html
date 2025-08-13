@@ -869,6 +869,9 @@
           <button id="downloadBtn" class="control-button success haptic" disabled>
             💾 Save Image
           </button>
+          <button id="downloadCanvasWithPinsBtn" class="control-button success haptic">
+            🔢 Download Canvas with Pins
+          </button>
         </div>
         
         <div class="controls-grid" style="grid-template-columns: 1fr;">
@@ -1217,6 +1220,7 @@
       document.getElementById('prevBtn').addEventListener('click', drawPreviousLine);
       document.getElementById('clearBtn').addEventListener('click', clearCanvas);
       document.getElementById('downloadBtn').addEventListener('click', downloadImage);
+      document.getElementById('downloadCanvasWithPinsBtn').addEventListener('click', downloadCanvasWithPins);
       document.getElementById('downloadJsonBtn').addEventListener('click', downloadJson);
       document.getElementById('fullscreenBtn').addEventListener('click', goFullScreen);
       document.getElementById('canvasSize').addEventListener('change', updateCanvasSize);
@@ -1660,6 +1664,88 @@
       const link = document.createElement('a');
       link.download = 'string_art_mobile.png';
       link.href = canvas.toDataURL('image/png');
+      link.click();
+      triggerHapticFeedback();
+    }
+
+    function downloadCanvasWithPins() {
+      const margin = 40;
+      const originalSize = parseInt(document.getElementById('canvasSize').value);
+      const newSize = originalSize + margin * 2;
+
+      const tempCanvas = document.createElement('canvas');
+      const tempCtx = tempCanvas.getContext('2d');
+      const shape = document.getElementById('shape').value;
+      tempCanvas.width = newSize;
+      tempCanvas.height = newSize;
+
+      // Draw a white background
+      tempCtx.fillStyle = 'white';
+      tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+
+      // Draw the original canvas content in the center
+      tempCtx.drawImage(canvas, margin, margin);
+
+      // Prepare to draw pin numbers
+      const fontSize = Math.max(8, Math.min(12, originalSize / 40));
+      tempCtx.fillStyle = 'black';
+      tempCtx.font = `${fontSize}px Arial`;
+      tempCtx.textAlign = 'center';
+      tempCtx.textBaseline = 'middle';
+
+      const pins = parseInt(document.getElementById('pins').value);
+      const center = newSize / 2;
+      const offset = 15;
+
+      pinCoords.forEach((pin, i) => {
+        let textX, textY;
+        const pinX = pin.x + margin;
+        const pinY = pin.y + margin;
+
+        if (shape === 'circle') {
+          const angle = Math.atan2(pinY - center, pinX - center);
+          textX = pinX + offset * Math.cos(angle);
+          textY = pinY + offset * Math.sin(angle);
+        } else if (shape === 'square') {
+          if (pin.y === 0) { // Top
+            textX = pinX;
+            textY = pinY - offset;
+          } else if (pin.x === originalSize - 1) { // Right
+            textX = pinX + offset;
+            textY = pinY;
+          } else if (pin.y === originalSize - 1) { // Bottom
+            textX = pinX;
+            textY = pinY + offset;
+          } else { // Left
+            textX = pinX - offset;
+            textY = pinY;
+          }
+        } else if (shape === 'triangle') {
+            const sideLength = originalSize - 10;
+            const v1 = { x: originalSize / 2, y: (originalSize - sideLength * Math.sqrt(3) / 2) / 2 };
+
+            if(pin.y.toFixed(2) === v1.y.toFixed(2)){
+                textX = pinX;
+                textY = pinY - offset;
+            } else if (pin.x > originalSize/2) { // Right side
+                textX = pinX + offset * Math.cos(Math.PI / 6);
+                textY = pinY + offset * Math.sin(Math.PI / 6);
+            } else { // Left side
+                textX = pinX - offset * Math.cos(Math.PI / 6);
+                textY = pinY + offset * Math.sin(Math.PI / 6);
+            }
+        }
+
+        // Clamp text position to be within the canvas
+        textX = Math.max(fontSize, Math.min(newSize - fontSize, textX));
+        textY = Math.max(fontSize, Math.min(newSize - fontSize, textY));
+
+        tempCtx.fillText(i, textX, textY);
+      });
+
+      const link = document.createElement('a');
+      link.download = 'string_art_with_pins.png';
+      link.href = tempCanvas.toDataURL('image/png');
       link.click();
       triggerHapticFeedback();
     }
