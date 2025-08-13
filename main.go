@@ -126,6 +126,12 @@ func stringArtHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
+	// Get shape
+	shape := r.FormValue("shape")
+	if shape == "" {
+		shape = "circle" // Default shape
+	}
+
 	// Validate file type
 	contentType := header.Header.Get("Content-Type")
 	if contentType != "image/jpeg" && contentType != "image/png" && contentType != "image/jpg" {
@@ -134,7 +140,7 @@ func stringArtHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Process the image
-	result, err := processStringArt(file)
+	result, err := processStringArt(file, shape)
 	if err != nil {
 		sendErrorResponse(w, "Failed to process image", err.Error(), http.StatusInternalServerError)
 		return
@@ -155,7 +161,7 @@ func sendErrorResponse(w http.ResponseWriter, error, message string, statusCode 
 	json.NewEncoder(w).Encode(response)
 }
 
-func processStringArt(file io.Reader) (*StringArtResponse, error) {
+func processStringArt(file io.Reader, shape string) (*StringArtResponse, error) {
 	// Import image and get pixel array
 	sourceImage, err := getPixels(file)
 	if err != nil {
@@ -163,7 +169,10 @@ func processStringArt(file io.Reader) (*StringArtResponse, error) {
 	}
 
 	// Calculate pin coordinates
-	pinCoords := calculatePinCoords()
+	pinCoords, err := calculatePinCoords(shape)
+	if err != nil {
+		return nil, fmt.Errorf("failed to calculate pin coordinates: %v", err)
+	}
 
 	// Precalculate all potential lines
 	lineCacheY, lineCacheX := precalculateAllPotentialLines(pinCoords)
@@ -210,7 +219,22 @@ func rgbaToPixel(r uint32, g uint32, b uint32, a uint32) float64 {
 	return float64(r / 257)
 }
 
-func calculatePinCoords() []Coord {
+func calculatePinCoords(shape string) ([]Coord, error) {
+	switch shape {
+	case "circle":
+		return calculateCirclePinCoords(), nil
+	case "square":
+		return calculateSquarePinCoords(), nil
+	case "heart":
+		return calculateHeartPinCoords(), nil
+	case "triangle":
+		return calculateTrianglePinCoords(), nil
+	default:
+		return nil, fmt.Errorf("invalid shape: %s", shape)
+	}
+}
+
+func calculateCirclePinCoords() []Coord {
 	pinCoords := make([]Coord, PINS)
 	center := float64(IMG_SIZE / 2)
 	radius := float64(IMG_SIZE/2 - 1)
@@ -223,6 +247,89 @@ func calculatePinCoords() []Coord {
 		}
 	}
 
+	return pinCoords
+}
+
+func calculateSquarePinCoords() []Coord {
+	pinCoords := make([]Coord, PINS)
+	border := float64(IMG_SIZE - 1)
+	pinsPerSide := PINS / 4
+
+	for i := 0; i < PINS; i++ {
+		side := i / pinsPerSide
+		pinInSide := i % pinsPerSide
+		progress := float64(pinInSide) / float64(pinsPerSide)
+
+		switch side {
+		case 0: // Top
+			pinCoords[i] = Coord{X: progress * border, Y: 0}
+		case 1: // Right
+			pinCoords[i] = Coord{X: border, Y: progress * border}
+		case 2: // Bottom
+			pinCoords[i] = Coord{X: border - (progress * border), Y: border}
+		case 3: // Left
+			pinCoords[i] = Coord{X: 0, Y: border - (progress * border)}
+		}
+	}
+
+	return pinCoords
+}
+
+func calculateHeartPinCoords() []Coord {
+	pinCoords := make([]Coord, PINS)
+	center := float64(IMG_SIZE / 2)
+	scale := float64(IMG_SIZE / 4)
+
+	for i := 0; i < PINS; i++ {
+		t := 2 * math.Pi * float64(i) / float64(PINS)
+		x := scale * (16*math.Pow(math.Sin(t), 3))
+		y := -scale * (13*math.Cos(t) - 5*math.Cos(2*t) - 2*math.Cos(3*t) - math.Cos(4*t))
+
+		pinCoords[i] = Coord{
+			X: math.Floor(x + center),
+			Y: math.Floor(y + center),
+		}
+	}
+	return pinCoords
+}
+
+func calculateTrianglePinCoords() []Coord {
+	pinCoords := make([]Coord, PINS)
+	sideLength := float64(IMG_SIZE - 10) // A bit smaller to fit in canvas
+
+	// Vertices of an equilateral triangle
+	// Top vertex
+	v1 := Coord{X: float64(IMG_SIZE)/2, Y: (float64(IMG_SIZE) - sideLength*math.Sqrt(3)/2) / 2}
+	// Bottom-right vertex
+	v2 := Coord{X: (float64(IMG_SIZE) + sideLength) / 2, Y: (float64(IMG_SIZE) + sideLength*math.Sqrt(3)/2) / 2}
+	// Bottom-left vertex
+	v3 := Coord{X: (float64(IMG_SIZE) - sideLength) / 2, Y: (float64(IMG_SIZE) + sideLength*math.Sqrt(3)/2) / 2}
+
+	pinsPerSide := PINS / 3
+
+	for i := 0; i < PINS; i++ {
+		side := i / pinsPerSide
+		pinInSide := i % pinsPerSide
+		progress := float64(pinInSide) / float64(pinsPerSide)
+
+		switch side {
+		case 0: // From v1 to v2
+			pinCoords[i] = Coord{
+				X: math.Floor(v1.X + progress*(v2.X-v1.X)),
+				Y: math.Floor(v1.Y + progress*(v2.Y-v1.Y)),
+			}
+		case 1: // From v2 to v3
+			pinCoords[i] = Coord{
+				X: math.Floor(v2.X + progress*(v3.X-v2.X)),
+				Y: math.Floor(v2.Y + progress*(v3.Y-v2.Y)),
+			}
+		case 2: // From v3 to v1
+			pinCoords[i] = Coord{
+				X: math.Floor(v3.X + progress*(v1.X-v3.X)),
+				Y: math.Floor(v3.Y + progress*(v1.Y-v3.Y)),
+			}
+		}
+	}
 	return pinCoords
 }
 

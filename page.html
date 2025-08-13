@@ -809,6 +809,15 @@
             <label class="setting-label" for="pins">Number of Pins</label>
             <input type="number" id="pins" value="300" min="50" max="500" step="10" class="setting-input">
           </div>
+
+          <div class="setting-card">
+            <label class="setting-label" for="shape">Shape</label>
+            <select id="shape" class="setting-input">
+              <option value="circle">Circle</option>
+              <option value="square">Square</option>
+              <option value="triangle">Triangle</option>
+            </select>
+          </div>
           
           <div class="setting-card">
             <label class="setting-label" for="lineColor">Line Color</label>
@@ -1215,6 +1224,11 @@
         calculatePinCoords();
         resetCanvas();
       });
+
+      document.getElementById('shape').addEventListener('change', () => {
+        calculatePinCoords();
+        resetCanvas();
+      });
       
       ['lineWidth', 'lineOpacity', 'animationSpeed'].forEach(id => {
         document.getElementById(id).addEventListener('input', updateSliderValue);
@@ -1244,17 +1258,103 @@
     function calculatePinCoords(resetState = true) {
       const pins = parseInt(document.getElementById('pins').value);
       const size = parseInt(document.getElementById('canvasSize').value);
+      const shape = document.getElementById('shape').value;
 
       pinCoords = [];
-      const center = size / 2;
-      const radius = size / 2 - 1;
 
-      for (let i = 0; i < pins; i++) {
-        const angle = 2 * Math.PI * i / pins;
-        const x = Math.floor(center + radius * Math.cos(angle));
-        const y = Math.floor(center + radius * Math.sin(angle));
-        pinCoords.push({ x, y });
+      if (shape === 'circle') {
+        const center = size / 2;
+        const radius = size / 2 - 1;
+
+        for (let i = 0; i < pins; i++) {
+          const angle = 2 * Math.PI * i / pins;
+          const x = Math.floor(center + radius * Math.cos(angle));
+          const y = Math.floor(center + radius * Math.sin(angle));
+          pinCoords.push({ x, y });
+        }
+      } else if (shape === 'square') {
+        const border = size - 1;
+        const pinsPerSide = Math.floor(pins / 4);
+
+        for (let i = 0; i < pins; i++) {
+          const side = Math.floor(i / pinsPerSide);
+          const pinInSide = i % pinsPerSide;
+          const progress = pinInSide / pinsPerSide;
+
+          let x, y;
+          switch (side) {
+            case 0: // Top
+              x = progress * border;
+              y = 0;
+              break;
+            case 1: // Right
+              x = border;
+              y = progress * border;
+              break;
+            case 2: // Bottom
+              x = border - (progress * border);
+              y = border;
+              break;
+            case 3: // Left
+              x = 0;
+              y = border - (progress * border);
+              break;
+            default: // Should not happen, but for safety
+              x = 0;
+              y = 0;
+          }
+          pinCoords.push({ x: Math.floor(x), y: Math.floor(y) });
+        }
+      } else if (shape === 'heart') {
+        const center = size / 2;
+        const scale = size / 4;
+
+        for (let i = 0; i < pins; i++) {
+          const t = 2 * Math.PI * i / pins;
+          const x = scale * (16 * Math.pow(Math.sin(t), 3));
+          const y = -scale * (13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t));
+
+          pinCoords.push({ x: Math.floor(x + center), y: Math.floor(y + center) });
+        }
+      } else if (shape === 'triangle') {
+        const sideLength = size - 10; // A bit smaller to fit in canvas
+        const pinsPerSide = Math.floor(pins / 3);
+
+        // Vertices of an equilateral triangle
+        // Top vertex
+        const v1 = { x: size / 2, y: (size - sideLength * Math.sqrt(3) / 2) / 2 };
+        // Bottom-right vertex
+        const v2 = { x: (size + sideLength) / 2, y: (size + sideLength * Math.sqrt(3) / 2) / 2 };
+        // Bottom-left vertex
+        const v3 = { x: (size - sideLength) / 2, y: (size + sideLength * Math.sqrt(3) / 2) / 2 };
+
+        for (let i = 0; i < pins; i++) {
+          const side = Math.floor(i / pinsPerSide);
+          const pinInSide = i % pinsPerSide;
+          const progress = pinInSide / pinsPerSide;
+
+          let x, y;
+          switch (side) {
+            case 0: // From v1 to v2
+              x = v1.x + progress * (v2.x - v1.x);
+              y = v1.y + progress * (v2.y - v1.y);
+              break;
+            case 1: // From v2 to v3
+              x = v2.x + progress * (v3.x - v2.x);
+              y = v2.y + progress * (v3.y - v2.y);
+              break;
+            case 2: // From v3 to v1
+              x = v3.x + progress * (v1.x - v3.x);
+              y = v3.y + progress * (v1.y - v3.y);
+              break;
+            default:
+              x = 0;
+              y = 0;
+          }
+          pinCoords.push({ x: Math.floor(x), y: Math.floor(y) });
+        }
       }
+
       if (resetState) {
           currentLineIndex = -1;
           currentPin = 0;
@@ -1333,6 +1433,7 @@
     async function uploadImage(file) {
       const formData = new FormData();
       formData.append('image', file);
+      formData.append('shape', document.getElementById('shape').value); // Add shape to form data
 
       try {
         const response = await fetch('/api/string-art', {
