@@ -41,7 +41,7 @@ type ErrorResponse struct {
 }
 
 // Constants
-const PINS = 300
+const PINS = 240
 const MIN_DISTANCE = 30
 const MAX_LINES = 4000
 const LINE_WEIGHT = 8
